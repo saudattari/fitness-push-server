@@ -4,7 +4,7 @@ const admin = require('firebase-admin');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Firebase Admin SDK Setup
+// Firebase Admin SDK Seup
 const serviceAccount = require('./fitness-guru-1112b-c5f25ea1da12.json');
 
 admin.initializeApp({
