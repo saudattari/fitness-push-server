@@ -87,9 +87,9 @@ async function sendPush(playerId, name) {
       include_player_ids: [playerId],
       headings: { en: `${name}, don't forget!` },
       contents: { en: "You haven’t completed your workout today" },
-      big_picture: "https://avatars.githubusercontent.com/u/11823027?s=200&v=4",
+      big_picture: "https://res.cloudinary.com/dfwynwymk/image/upload/v1752379629/sp_picture_m9hjmq.png",
       ios_attachments: {
-        onesignal_logo: "https://avatars.githubusercontent.com/u/11823027?s=200&v=4"
+        onesignal_logo: "https://res.cloudinary.com/dfwynwymk/image/upload/v1752379629/sp_picture_m9hjmq.png"
       }
     };
 
