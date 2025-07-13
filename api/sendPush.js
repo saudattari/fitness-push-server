@@ -1,7 +1,6 @@
 const admin = require("firebase-admin");
 const axios = require("axios");
 
-// Initialize Firebase Admin once using base64 key from env
 if (!admin.apps.length) {
   try {
     const decoded = Buffer.from(process.env.FIREBASE_KEY_BASE64, "base64").toString("utf8");
@@ -11,9 +10,9 @@ if (!admin.apps.length) {
       credential: admin.credential.cert(serviceAccount)
     });
 
-    console.log("🔥 Firebase initialized successfully");
+    console.log("Firebase initialized successfully");
   } catch (e) {
-    console.error("❌ Failed to initialize Firebase:", e);
+    console.error("Failed to initialize Firebase:", e);
   }
 }
 
@@ -25,14 +24,14 @@ module.exports = async (req, res) => {
     const endOfDay = new Date(startOfDay);
     endOfDay.setDate(endOfDay.getDate() + 1);
 
-    console.log(`🗓️ Querying DailyCheck from ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
+    console.log(`Querying DailyCheck from ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
 
     const dailyCheckSnapshot = await db.collection("DailyCheck")
       .where("date", ">=", startOfDay)
       .where("date", "<", endOfDay)
       .get();
 
-    console.log(`📄 Found ${dailyCheckSnapshot.size} entries for today`);
+    console.log(`Found ${dailyCheckSnapshot.size} entries for today`);
 
     const notifications = [];
 
@@ -41,13 +40,13 @@ module.exports = async (req, res) => {
       const { userId, workoutCompleted, notificationSent } = data;
 
       if (!userId || workoutCompleted || notificationSent) {
-        console.log(`⚠️ Skipping document: ${doc.id}`);
+        console.log(`Skipping document: ${doc.id}`);
         continue;
       }
 
       const userDoc = await db.collection("Users").doc(userId).get();
       if (!userDoc.exists) {
-        console.log(`❌ User not found: ${userId}`);
+        console.log(`User not found: ${userId}`);
         continue;
       }
 
@@ -56,26 +55,26 @@ module.exports = async (req, res) => {
       const name = userData?.name || "Hey there";
 
       if (!playerId) {
-        console.log(`⚠️ Missing playerId for user ${userId}`);
+        console.log(`Missing playerId for user ${userId}`);
         continue;
       }
 
-      console.log(`📲 Sending push to ${name} (playerId: ${playerId})`);
+      console.log(`Sending push to ${name} (playerId: ${playerId})`);
       notifications.push(sendPush(playerId, name));
 
       await db.collection("DailyCheck").doc(doc.id).update({
         notificationSent: true
       });
 
-      console.log(`✅ Updated 'notificationSent' for: ${doc.id}`);
+      console.log(`Updated 'notificationSent' for: ${doc.id}`);
     }
 
     await Promise.all(notifications);
-    console.log("🎉 All notifications processed");
-    res.status(200).send("✅ Push notifications sent for today.");
+    console.log("All notifications processed");
+    res.status(200).send("Push notifications sent for today.");
   } catch (error) {
-    console.error("❌ Error in /sendPush:", error);
-    res.status(500).send("❌ Failed to send push notifications");
+    console.error("Error in /sendPush:", error);
+    res.status(500).send("Failed to send push notifications");
   }
 };
 
@@ -87,7 +86,7 @@ async function sendPush(playerId, name) {
       name: "Daily Workout Reminder",
       include_player_ids: [playerId],
       headings: { en: `${name}, don't forget!` },
-      contents: { en: "You haven’t completed your workout today 💪" },
+      contents: { en: "You haven’t completed your workout today" },
       big_picture: "https://avatars.githubusercontent.com/u/11823027?s=200&v=4",
       ios_attachments: {
         onesignal_logo: "https://avatars.githubusercontent.com/u/11823027?s=200&v=4"
@@ -100,10 +99,10 @@ async function sendPush(playerId, name) {
     };
 
     const response = await axios.post("https://api.onesignal.com/notifications", payload, { headers });
-    console.log(`✅ Push sent to ${name}`, response.data);
+    console.log(`Push sent to ${name}`, response.data);
     return response.data;
   } catch (error) {
-    console.error(`❌ Push failed for ${name}`, {
+    console.error(`Push failed for ${name}`, {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status
