@@ -10,9 +10,9 @@ if (!admin.apps.length) {
       credential: admin.credential.cert(serviceAccount)
     });
 
-    console.log("Firebase initialized successfully");
+    console.log("✅ Firebase initialized successfully");
   } catch (e) {
-    console.error("Failed to initialize Firebase:", e);
+    console.error("❌ Failed to initialize Firebase:", e);
   }
 }
 
@@ -24,56 +24,74 @@ module.exports = async (req, res) => {
     const endOfDay = new Date(startOfDay);
     endOfDay.setDate(endOfDay.getDate() + 1);
 
-    console.log(`Querying DailyCheck from ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
+    console.log(`📅 Querying DailyCheck from ${startOfDay.toISOString()} to ${endOfDay.toISOString()}`);
 
     const dailyCheckSnapshot = await db.collection("DailyCheck")
       .where("date", ">=", startOfDay)
       .where("date", "<", endOfDay)
       .get();
 
-    console.log(`Found ${dailyCheckSnapshot.size} entries for today`);
-
     const notifications = [];
 
-    for (const doc of dailyCheckSnapshot.docs) {
-      const data = doc.data();
-      const { userId, workoutCompleted, notificationSent } = data;
+    if (!dailyCheckSnapshot.empty) {
+      console.log(`📄 Found ${dailyCheckSnapshot.size} DailyCheck entries for today`);
 
-      if (!userId || workoutCompleted || notificationSent) {
-        console.log(`Skipping document: ${doc.id}`);
-        continue;
+      for (const doc of dailyCheckSnapshot.docs) {
+        const data = doc.data();
+        const { userId, workoutCompleted, notificationSent } = data;
+
+        if (!userId || workoutCompleted || notificationSent) {
+          console.log(`⚠️ Skipping DailyCheck: ${doc.id}`);
+          continue;
+        }
+
+        const userDoc = await db.collection("Users").doc(userId).get();
+        if (!userDoc.exists) {
+          console.log(`❌ User not found: ${userId}`);
+          continue;
+        }
+
+        const userData = userDoc.data();
+        const playerId = userData?.fcmToken;
+        const name = userData?.name || "Hey there";
+
+        if (!playerId) {
+          console.log(`⚠️ Missing playerId for user ${userId}`);
+          continue;
+        }
+
+        console.log(`📲 Sending push to ${name} (playerId: ${playerId})`);
+        notifications.push(sendPush(playerId, name));
+
+        await db.collection("DailyCheck").doc(doc.id).update({
+          notificationSent: true
+        });
+
+        console.log(`✅ Updated 'notificationSent' for: ${doc.id}`);
       }
+    } else {
+      console.log("⚠️ No DailyCheck found for today — fallback to notifying all users");
 
-      const userDoc = await db.collection("Users").doc(userId).get();
-      if (!userDoc.exists) {
-        console.log(`User not found: ${userId}`);
-        continue;
-      }
+      const usersSnapshot = await db.collection("Users").get();
+      usersSnapshot.forEach(userDoc => {
+        const userData = userDoc.data();
+        const playerId = userData?.fcmToken;
+        const name = userData?.name || "Hey there";
 
-      const userData = userDoc.data();
-      const playerId = userData?.fcmToken;
-      const name = userData?.name || "Hey there";
-
-      if (!playerId) {
-        console.log(`Missing playerId for user ${userId}`);
-        continue;
-      }
-
-      console.log(`Sending push to ${name} (playerId: ${playerId})`);
-      notifications.push(sendPush(playerId, name));
-
-      await db.collection("DailyCheck").doc(doc.id).update({
-        notificationSent: true
+        if (playerId) {
+          console.log(`📲 Sending fallback push to ${name} (playerId: ${playerId})`);
+          notifications.push(sendPush(playerId, name));
+        } else {
+          console.log(`⚠️ Skipping ${userDoc.id}, no playerId`);
+        }
       });
-
-      console.log(`Updated 'notificationSent' for: ${doc.id}`);
     }
 
     await Promise.all(notifications);
-    console.log("All notifications processed");
-    res.status(200).send("Push notifications sent for today.");
+    console.log("🎉 All notifications processed");
+    res.status(200).send("✅ Push notifications sent");
   } catch (error) {
-    console.error("Error in /sendPush:", error);
+    console.error("❌ Error in /sendPush:", error);
     res.status(500).send("Failed to send push notifications");
   }
 };
@@ -99,10 +117,10 @@ async function sendPush(playerId, name) {
     };
 
     const response = await axios.post("https://api.onesignal.com/notifications", payload, { headers });
-    console.log(`Push sent to ${name}`, response.data);
+    console.log(`✅ Push sent to ${name}`, response.data);
     return response.data;
   } catch (error) {
-    console.error(`Push failed for ${name}`, {
+    console.error(`❌ Push failed for ${name}`, {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status
