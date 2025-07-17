@@ -64,7 +64,7 @@ module.exports = async (req, res) => {
         notifications.push(sendPush(playerId, name));
 
         await db.collection("DailyCheck").doc(doc.id).update({
-          notificationSent: true
+          notificationSent: false
         });
 
         console.log(`✅ Updated 'notificationSent' for: ${doc.id}`);
