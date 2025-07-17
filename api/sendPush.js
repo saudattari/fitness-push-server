@@ -33,14 +33,14 @@ module.exports = async (req, res) => {
 
     const notifications = [];
 
-    if (!dailyCheckSnapshot.empty) {
+    if (!dailyCheckSnapshot.empty || dailyCheckSnapshot.empty) {
       console.log(`📄 Found ${dailyCheckSnapshot.size} DailyCheck entries for today`);
 
       for (const doc of dailyCheckSnapshot.docs) {
         const data = doc.data();
         const { userId, workoutCompleted, notificationSent } = data;
 
-        if (!userId || workoutCompleted || notificationSent) {
+        if (!userId || workoutCompleted) {
           console.log(`⚠️ Skipping DailyCheck: ${doc.id}`);
           continue;
         }
